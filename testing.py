@@ -1,44 +1,135 @@
-import cv2
-import threading
-import time
+import re, datetime
 
-# Глобальний флаг для контролю камери
-camera_running = False
-cap = None
 
-def turn_the_camera():
-    global camera_running, cap
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        raise Exception("Камеру не знайдено!")
+def words_to_number(text) -> int | None:
+    num_words = {
+        "zero": 0,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+        "thirteen": 13,
+        "fourteen": 14,
+        "fifteen": 15,
+        "sixteen": 16,
+        "seventeen": 17,
+        "eighteen": 18,
+        "nineteen": 19,
+        "twenty": 20,
+        "thirty": 30,
+        "forty": 40,
+        "fifty": 50,
+        "sixty": 60,
+        "seventy": 70,
+        "eighty": 80,
+        "ninety": 90,
+    }
 
-    camera_running = True
-    print("Camera is running...")
+    multipliers = {
+        "hundred": 100,
+        "thousand": 1000,
+        "million": 1000000,
+        "billion": 1000000000
+    }
+    text = text.lower().replace("-", " ")
+    words = text.split()
 
-    while camera_running:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    total = 0
+    current = 0
+    
+    for w in words:
+        if w in num_words:
+            current += num_words[w]
+        elif w in multipliers:
+            if current == 0:
+                current = 1
+            current *= multipliers[w]
+            total += current
+            current = 0
+        else:
+            return None  # невідоме слово
+    return total + current
 
-        cv2.imshow("Camera", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_camera()
+def extract_time(text):
+    num_words = {
+        "zero": 0,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+        "thirteen": 13,
+        "fourteen": 14,
+        "fifteen": 15,
+        "sixteen": 16,
+        "seventeen": 17,
+        "eighteen": 18,
+        "nineteen": 19,
+        "twenty": 20,
+        "thirty": 30,
+        "forty": 40,
+        "fifty": 50,
+        "sixty": 60,
+        "seventy": 70,
+        "eighty": 80,
+        "ninety": 90,
+    }
 
-    cap.release()
-    cv2.destroyAllWindows()
-    camera_running = False
-    print("Camera stopped.")
+    multipliers = {
+        "hundred": 100,
+        "thousand": 1000,
+        "million": 1000000,
+        "billion": 1000000000
+    }
+    text = text.lower()
 
-def stop_camera():
-    global camera_running
-    camera_running = False
+    # 1. if already in numbers 12.30 or 12:30
+    match = re.search(r"(\d{1,2})[.:](\d{1,2})", text)
+    if match:
+        hh, mm = match.groups()
+        return f"{int(hh):02d}:{int(mm):02d}"
 
-# Запуск камери в окремому потоці
-camera_thread = threading.Thread(target=turn_the_camera)
-camera_thread.start()
+    # if in words
+    words = text.split()
 
-# Імітуємо роботу програми
-time.sleep(10)  # наприклад, через 10 секунд хочемо зупинити камеру
-stop_camera()
-camera_thread.join()
-print("Камера була зупинена з іншої функції")
+    number_words = []
+    for w in words:
+        if w in num_words or w in multipliers:
+            number_words.append(w)
+
+    if not number_words:
+        return None
+
+    #if only houres
+    if len(number_words) == 1:
+        hh = words_to_number(number_words[0])
+        return f"{hh:02d}:00"
+
+    if len(number_words) >= 2:
+        hh = words_to_number(number_words[0])
+        mm = words_to_number(" ".join(number_words[1:]))
+        return f"{hh:02d}:{mm:02d}"
+
+    return None
+
+
+def str_to_time(time_str: str) -> datetime.time:
+    hour, minute = map(int, time_str.split(":"))
+    return datetime.time(hour, minute)
+
+print(extract_time("set the timer to twelve oclock"))

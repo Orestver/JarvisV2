@@ -231,7 +231,7 @@ def wait_for_command() -> str:
                 text = result.get("text", "").lower().strip()
                 if text:
                     print(f"\nПочув: {text}")
-                    if any(phrase in text for phrase in ["jarvis", "gandhi's", "got it is","jerry's","nervous","john with","gary's"]):
+                    if any(phrase in text for phrase in ["jarvis", "gandhi's", "got it is","jerry's","nervous","john with","gary's", "doris"]):
                         playsound.playsound("Jarvis_voice_commands/command_responses/Ready to help Sir.mp3")
                         wishMe() 
                         return "smth"  # return any non-empty string to indicate wake word detected
@@ -285,49 +285,6 @@ def consultation(command: str) -> None:
         speak("Sorry, I couldn't find an answer to your question. Please try again later or ask something else.")
         print("⚠️ No response from AI. Please try again later or ask something else.")
 
-# Function to convert text to number
-def text_to_number(text: str) -> int:
-    text = text.lower().replace('-', ' ').replace(' and ', ' ')
-    words = text.split()
-
-    units = {
-        "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-        "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
-        "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
-        "nineteen": 19
-    }
-
-    tens = {
-        "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
-        "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90
-    }
-
-    scales = {
-        "hundred": 100,
-        "thousand": 1000,
-        "million": 1_000_000,
-        "billion": 1_000_000_000
-    }
-
-    current = result = 0
-
-    for word in words:
-        if word in units:
-            current += units[word]
-        elif word in tens:
-            current += tens[word]
-        elif word == "hundred":
-            current *= scales[word]
-        elif word in scales:
-            current *= scales[word]
-            result += current
-            current = 0
-        else:
-            # ігноруємо невідомі слова, щоб не падало
-            continue
-
-    return result + current
 
 # Function to extract time from phrase
 def extract_time_fast(phrase: str) -> str | None:
@@ -365,7 +322,7 @@ def extract_time_fast(phrase: str) -> str | None:
 
     if buffer:
         try:
-            number_unit = text_to_number(' '.join(buffer))
+            number_unit = words_to_number(' '.join(buffer))
         except Exception:
             return None
         if time_unit:
@@ -429,10 +386,10 @@ def extract_number_fast(phrase: str) -> int | None:
         if word in number_words:
             buffer.append(word)
         elif buffer:
-            return text_to_number(' '.join(buffer))
+            return words_to_number(' '.join(buffer))
 
     if buffer:
-        return text_to_number(' '.join(buffer))
+        return words_to_number(' '.join(buffer))
     
     return None
 
@@ -834,7 +791,7 @@ def extract_time_fast(phrase: str) -> str | None:
 
     if buffer:
         try:
-            number_unit = text_to_number(' '.join(buffer))
+            number_unit = words_to_number(' '.join(buffer))
         except Exception:
             return None
         if time_unit:
@@ -916,27 +873,113 @@ def set_alarm(target_time: datetime.time) -> None:
         now = datetime.datetime.now().time()
         if now.hour == target_time.hour and now.minute == target_time.minute:
             #speak('ALARM, ALARM, the clock is out. You must to go to do something')
-            playsound.playsound(resource_path("'ALARM, ALARM, the clock is out. You must to go to do something'"))
+            playsound.playsound(resource_path("Jarvis_voice_commands/command_responses/ALARM, ALARM, the clock is out. You must to go to do something.mp3"))
             break  # інакше буде нескінченний спам
         time.sleep(1)  # затримка, щоб не навантажувати процесор
 
-# Function to parse and set alarm clock from command
+
+
+# Function to convert words to numbers
+def words_to_number(text) -> int | None:
+    num_words = {
+        "zero": 0,"one": 1,"two": 2,"three": 3,"four": 4,"five": 5,"six": 6,"seven": 7,"eight": 8,"nine": 9,"ten": 10,"eleven": 11,"twelve": 12,
+        "thirteen": 13,"fourteen": 14,"fifteen": 15,"sixteen": 16,"seventeen": 17,"eighteen": 18,"nineteen": 19,"twenty": 20,"thirty": 30,"forty": 40,
+        "fifty": 50,"sixty": 60,"seventy": 70,"eighty": 80,"ninety": 90,
+    }
+
+    multipliers = {
+        "hundred": 100,
+        "thousand": 1000,
+        "million": 1000000,
+        "billion": 1000000000
+    }
+    text = text.lower().replace("-", " ")
+    words = text.split()
+
+    total = 0
+    current = 0
+    
+    for w in words:
+        if w in num_words:
+            current += num_words[w]
+        elif w in multipliers:
+            if current == 0:
+                current = 1
+            current *= multipliers[w]
+            total += current
+            current = 0
+        else:
+            return None  
+    return total + current
+
+
+# Function to extract time for alarm clock
+def extract_time(text) -> str | None:
+    num_words = {
+        "zero": 0,"one": 1,"two": 2,"three": 3,"four": 4,"five": 5,"six": 6,"seven": 7,"eight": 8,"nine": 9,"ten": 10,"eleven": 11,"twelve": 12,
+        "thirteen": 13,"fourteen": 14,"fifteen": 15,"sixteen": 16,"seventeen": 17,"eighteen": 18,"nineteen": 19,"twenty": 20,"thirty": 30,"forty": 40,
+        "fifty": 50,"sixty": 60,"seventy": 70,"eighty": 80,"ninety": 90,
+    }
+
+    multipliers = {
+        "hundred": 100,
+        "thousand": 1000,
+        "million": 1000000,
+        "billion": 1000000000
+    }
+    text = text.lower()
+
+    # 1. if already in numbers 12.30 or 12:30
+    match = re.search(r"(\d{1,2})[.:](\d{1,2})", text)
+    if match:
+        hh, mm = match.groups()
+        return f"{int(hh):02d}:{int(mm):02d}"
+
+    # if in words
+    words = text.split()
+
+    number_words = []
+    for w in words:
+        if w in num_words or w in multipliers:
+            number_words.append(w)
+
+    if not number_words:
+        return None
+
+    #if only houres
+    if len(number_words) == 1:
+        hh = words_to_number(number_words[0])
+        return f"{hh:02d}:00"
+
+    if len(number_words) >= 2:
+        hh = words_to_number(number_words[0])
+        mm = words_to_number(" ".join(number_words[1:]))
+        return f"{hh:02d}:{mm:02d}"
+
+    return None
+
+
+# Function to set alarm clock
 def set_alarm_clock(command: str) -> None:
     match = re.search(r'\b(?:[0-1]?\d|2[0-3]):(?:[0-5]\d)\b', command)
     if not match:
         print('Invalid input')
         return
 
-    time_str = match.group()  # наприклад, "11:45"
-    hour, minute = map(int, time_str.split(':'))
-    alarm_time = datetime.time(hour, minute)
+    time_str = match.group()  # "11:45"
+    alarm_time = str_to_time(time_str)
 
-    speak(f'The alarm clock is set to {hour}:{minute:02d}')
-
+    speak(f'The alarm clock is set to {alarm_time.hour}:{alarm_time.minute:02d}')
+    print(f'The alarm clock is set to {alarm_time.hour}:{alarm_time.minute:02d}')
     try:
         threading.Thread(target=set_alarm, args=(alarm_time,), daemon=True).start()
     except Exception as e:
         print(f'Error with thread: {e}')
+
+# Function to convert str to time 
+def str_to_time(time_str: str) -> datetime.time:
+    hour, minute = map(int, time_str.split(":"))
+    return datetime.time(hour, minute)
 
 # Functin to generate image using Gemini API ----Curently not working due to API issues----            
 def gen_image(command: str) -> None:
@@ -1315,14 +1358,14 @@ async def run_voice_assistant() -> None:
                     action_performed = True
 
                 if 'latest news' in command:
-                    await loop.run_in_executor(executor, playsound.playsound, "Jarvis_voice_commands\command_responses\Searching for latest news....mp3")
+                    await loop.run_in_executor(executor, playsound.playsound, "Jarvis_voice_commands/command_responses/Searching for latest news....mp3")
                     news_list = await loop.run_in_executor(executor, get_latest_news)
                     for n in news_list:
                         print("🔹", n["title"])
                         print("   📅", n["published"])
                         print("   🔗", n["url"])
                         print()
-                    await loop.run_in_executor(executor, playsound.playsound, "Jarvis_voice_commands\command_responses\Here is the list of 10 latest news..mp3")
+                    await loop.run_in_executor(executor, playsound.playsound, "Jarvis_voice_commands/command_responses/Here is the list of 10 latest news..mp3")
                     action_performed = True
 
                 if 'restart' in command or 'перезавантажити' in command:
@@ -1370,7 +1413,8 @@ async def run_voice_assistant() -> None:
                     action_performed = True
 
                 if 'alarm clock' in command or 'set the clock' in command:
-                    await loop.run_in_executor(executor,set_alarm_clock, command)
+                    time_str  = await loop.run_in_executor(executor,extract_time, command)
+                    await loop.run_in_executor(executor,set_alarm_clock, time_str)
                     action_performed = True
 
                 #need paid status   
