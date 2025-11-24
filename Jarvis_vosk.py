@@ -20,6 +20,7 @@ from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 import speech_recognition as sr
 from google import genai
+import google.generativeai as genaii
 from google.genai import types
 import webbrowser
 import urllib.parse
@@ -28,6 +29,7 @@ import psutil
 import pygetwindow as gw
 from pywinauto.application import Application
 import requests
+import cv2, tempfile
 import yt_dlp # для відкриття відео на ю тубі | for opening videos on youtube
 from PIL import Image
 from io import BytesIO
@@ -53,8 +55,9 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 memory = AssistantMemory()
 #change if plan in elevemlabs is over
-#from speak import speak # <-----------------------Change here
-from elevenlabsspeach import speak  #<------------ Change here
+
+from speak import speak # <-----------------------Change here
+#from elevenlabsspeach import speak  #<------------ Change here
 #from main import speak
 
 MODEL_PATH = "vosk-model-small-en-us-0.15" 
@@ -843,29 +846,97 @@ async def handle_weather(command: str) -> dict | None:
     df = pd.read_excel('utils/worldcities.xlsx')  # Файл з бази SimpleMaps
     city_list = df['city'].dropna().unique().tolist()
     city_list_lower = [c.lower() for c in city_list]
+
     words = command.split()
     weather = WeatherForecast()
+
     for word in words:
         if word in city_list_lower:
-            await weather.get_weather(word)
-            return
-    #speak('Can i get your location to get the weather Sir?')
+            weather_data = await weather.get_weather(word)
+            speak(f'The weather in {weather_data.get('name')} is {weather_data.get('main',{}).get('temp')}')
+            return weather_data
+    
     playsound.playsound(resource_path("Jarvis_voice_commands/command_responses/Can i get your location to get the weather Sir.mp3"))
     confirm = command_req().lower()
+
     if 'yes' in confirm or 'sure' in confirm:
         response = requests.get("https://ipinfo.io")
         data = response.json()
-        await weather.get_weather(data['city'])
-        return {
-             "ip": data.get("ip"),
-            "city": data.get("city"),
-            "region": data.get("region"),
-            "country": data.get("country"),
-            "loc": data.get("loc")  # широта, довгота
-        }
+        weather_data = await weather.get_weather(data['city'])
+        speak(f'The weather in {weather_data.get('name')} is {weather_data.get('main',{}).get('temp')}')
+        return weather_data
+    
     elif 'no' in confirm:
         #speak('Ok than enter the city where you want to get weather')
         playsound.playsound(resource_path("Jarvis_voice_commands/command_responses/Ok than enter the city where you want to get weather.mp3"))
+        return None
+    
+# Function to analyze weather for asistant so he can do the desicion about clothes  
+async def handle_weather_for_analizing() -> dict | None:
+
+    weather = WeatherForecast()
+
+    response = requests.get("https://ipinfo.io")
+    data = response.json()
+    weather_data = await weather.get_weather(data['city'])
+    return weather_data
+    
+   
+
+
+# Function for analyzing user from the photo and give the advice about weather
+def analyze_user() -> None:
+    genaii.configure(api_key=GOOGLE_API_KEY)
+    model = genaii.GenerativeModel("gemini-2.0-flash")
+    # Camera capture
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise Exception("Камеру не знайдено!")
+
+    print("🎥 Camera is running press'c', to take a picture and analize.")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        cv2.imshow("Camera", frame)
+        key = cv2.waitKey(1) & 0xFF
+        
+        if key == ord('c'):
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
+                cv2.imwrite(tmpfile.name, frame)
+
+                weather_info = asyncio.run(handle_weather_for_analizing())
+            
+                if weather_info:
+                    weather_text = (
+                        'The weather in ' + str(weather_info.get('name', 'Unknown')) + ' is '
+                        + str(weather_info.get('main', {}).get('temp', 'N/A')) + '°C, '
+                        + str(weather_info.get("weather", [{}])[0].get("description", 'N/A')) + ', '
+                        + 'Humidity: ' + str(weather_info.get('main', {}).get('humidity', 'N/A')) + '%, '
+                        + 'Wind speed: ' + str(weather_info.get('wind', {}).get('speed', 'N/A')) + ' m/s'
+                    )
+
+                else:
+                    weather_text = "unknown"
+
+                response = model.generate_content([
+                    f"Can i go outside in this clothes if : {weather_text}"
+                    f"Give short answer 2 sentenses maximum",
+                    {"mime_type": "image/jpeg", "data": open(tmpfile.name, "rb").read()}
+                ])
+
+                description = response.text
+                print("\nAnalizyng...:", description)
+                speak(description)
+        if key == ord('v'):
+            break
+            
+
+    cap.release()
+    cv2.destroyAllWindows()
+
 
 # Function to set the alarm clock
 def set_alarm(target_time: datetime.time) -> None:
@@ -1494,6 +1565,10 @@ async def run_voice_assistant() -> None:
                         await loop.run_in_executor(executor, playsound.playsound, "Jarvis_voice_commands/command_responses/I didn't catch your query. Please try again..mp3")
                         print("I didn't catch your query. Please try again.")
                         action_performed = True
+                
+                if any(x in command for x in ['how do i look',"can i go outside like this", 'go outside']):
+                    await loop.run_in_executor(executor,analyze_user)
+                    action_performed = True
                 """    
                 if "play" in command or "грати" in command:
                     game_name = extract_game_name(command)

@@ -3,7 +3,8 @@ import asyncio
 from urllib.parse import quote
 from dotenv import load_dotenv
 import os
-from elevenlabsspeach import speak
+#from elevenlabsspeach import speak
+from speak import speak
 load_dotenv()
 WEATHER_API = os.getenv("WEATHER_API_KEY")
 
@@ -21,7 +22,7 @@ class WeatherForecast:
         }
         return ''.join(translit_map.get(c, c) for c in city_name.lower())
 
-    async def get_weather(self, city):
+    async def get_weather(self, city) -> dict | None:
         if not city:
             print("⚠️ Введіть назву міста.")
             return
@@ -42,12 +43,12 @@ class WeatherForecast:
             if data.get("cod") != 200:
                 print(f"❌ Місто «{city}» не знайдено (код: {data.get('cod')})")
                 return
-
+            '''
             temp = data["main"]["temp"]
             weather = data["weather"][0]["description"]
             humidity = data["main"]["humidity"]
             wind_speed = data["wind"]["speed"]
-
+            
             message = (
                 f'Weather in {city}:\n'
                 f" Temperature: {temp}°C\n"
@@ -57,7 +58,8 @@ class WeatherForecast:
             )
             print(message)
             speak(f"The weather in {city} is {temp} degrees Celsius")
-            return message
+            '''
+            return data
 
         except aiohttp.ClientError as e:
             print(f"❌ Проблема з'єднання: {str(e)}")
@@ -67,4 +69,10 @@ class WeatherForecast:
             print(f"⚠️ Помилка: {str(e)}")
 
 
+if __name__ == "__main__":
+    weather = WeatherForecast()
+    async def get_data():
+        data = await weather.get_weather('lviv')
+        print(data)
 
+    asyncio.run(get_data())
