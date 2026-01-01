@@ -50,11 +50,12 @@ Now there are 2 versions
 git clone https://github.com/Orestver/JarvisV2
 pip install -r requirements.txt
 py Jarvis_vosk.py
-
+```
 or
+
 ```bash
 git clone https://github.com/Orestver/JarvisV2
 pip install -r requirements.txt
 py Jarvis_V2.py
-
+```
 Hope that was interesting for you :D.
