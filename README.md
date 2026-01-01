@@ -2,7 +2,7 @@
 
 Its a updated version of AI assistant JARVIS from iron man movies.
 You can find previous version here.
-💻[GitHub Repository](https://github.com/yourname/wordery)
+💻[GitHub Repository](https://github.com/Orestver/Jarvis-AI-assistant)
 
 
 
