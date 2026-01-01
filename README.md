@@ -40,7 +40,15 @@ You can find previous version here.
   - Telling when your nopepad fully charged and you can unplug the charger and when your notepad has X% (You can change it) Jarvis tells you to plug your device
   - Timer. When you say set the timer to X time. After this time Jarvis will tell you that timer is out.
   - Alarm clock. Same like timer but with time when to alarm your.
+## ⚙️.env setup
 
+So that everything works correctly you need to create .env file in main and fill up the variables
+
+1. GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
+2. WEATHER_API_KEY=YOUR_OPENWEATHERMAP_API_KEY
+3. NEWS_API_KEY=YOUR_NEWS_API_KEY
+4. ELEVENLABS_API_KEY=YOUR_ELEVENLABS_API_KEY (Optional your can just comment import from elevenlabsspeech and uncomment voice_test2 file)
+   
 ## 🛠How to launch
 Open any code editor create a folder paste this commands in terminal
 Now there are 2 versions
